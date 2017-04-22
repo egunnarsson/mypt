@@ -63,8 +63,11 @@ AABVH::Element::~Element()
 		else
 			delete right;
 	}*/
-	delete left;
-	delete right;
+	if (m_isLeaf)
+	{
+		delete left;
+		delete right;
+	}
 }
 
 AABox AABVH::Element::getBox()
@@ -86,34 +89,19 @@ AABVH::Element* AABVH::buildMeshTree(sp<Mesh> meshPtr) const
 	
 	std::vector<Element*> queue;
 
-	// pack all triangles into elements with pairs of two triangles
 	uint_fast32_t chunkIndex = 0;
 	for (auto chunkIt = meshPtr->m_chunks.begin(); chunkIt < meshPtr->m_chunks.end(); ++chunkIt)
 	{
 		uint_fast32_t triangleIndex = 0;
 		for (auto triIt = (*chunkIt).m_triangles.begin(); triIt < (*chunkIt).m_triangles.end(); ++triIt)
 		{
-			/*if (!queue.empty() && queue.back()->right.leaf.triangle == nullptr)
-			{
-				Element *elem = queue.back();
-
-				LeafData &leaf = elem->right.leaf;
-				leaf.triangle = &(*triIt);
-				leaf.chunkIndex = chunkIndex;
-				leaf.triangleIndex = triangleIndex;
-
-				elem->m_box = AABox(elem->m_box, AABox(*triIt));
-			}
-			else*/
-			{
-				queue.push_back(new Element(&(*triIt), chunkIndex, triangleIndex));
-			}
+			queue.push_back(new Element(&(*triIt), chunkIndex, triangleIndex));
 			++triangleIndex;
 		}
 		++chunkIndex;
 	}
 
-	printf("triangles %d\n", queue.size());
+	printf("triangles %zu\n", queue.size());
 	//Element *skipList = new Element[queue.size() + queue.size() - 1];
 	//tbb::fixed_pool
 
@@ -175,14 +163,14 @@ AABVH::Element* AABVH::buildMeshTree(sp<Mesh> meshPtr) const
 	};
 
 	Element *meshElement = split(meshPtr->getBoundingBox(), 0, queue);
-	if (meshElement->m_isLeaf) 
+	if (meshElement->m_isLeaf) // the single triangle mesh
 	{
 		elementCount++;
 		meshElement = new Element(meshElement, nullptr); // this nullptr will cause a crash...
 	}
 	meshElement->m_mesh = meshPtr.get();
 	
-	printf("elemnts %d\n", elementCount + queue.size());
+	printf("elemnts %zu\n", elementCount + queue.size());
 
 	return meshElement;
 }

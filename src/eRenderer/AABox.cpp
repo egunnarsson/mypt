@@ -1,6 +1,4 @@
 
-#include <algorithm>
-
 #include "AABox.h"
 
 AABox::AABox()
@@ -62,20 +60,19 @@ std::pair<AABox, AABox> AABox::split(int axis) const
 
 number AABox::intersect(const Ray ray) const
 {
-	//Direction rInvDir = Direction(1, 1, 1) / ray.direction();
-	const number invDirX = ray.invDirection().x; // 1.0 / ray.direction().x;
-	const number invDirY = ray.invDirection().y; // 1.0 / ray.direction().y;
-	const number invDirZ = ray.invDirection().z; // 1.0 / ray.direction().z;
-
+	const number invDirX = ray.invDirection().x;
+	const number invDirY = ray.invDirection().y;
+	const number invDirZ = ray.invDirection().z;
+	
 	const int rSignX = ray.direction().x < 0 ? 1 : 0;
 	const int rSignY = ray.direction().y < 0 ? 1 : 0;
 	const int rSignZ = ray.direction().z < 0 ? 1 : 0;
 
 	//number tmin, tmax, tymin, tymax, tzmin, tzmax;
-
+	
 	number tmin = (m_bounds[rSignX].x - ray.origin().x) * invDirX;
 	number tmax = (m_bounds[1 - rSignX].x - ray.origin().x) * invDirX;
-
+	
 	const number tymin = (m_bounds[rSignY].y - ray.origin().y) * invDirY;
 	const number tymax = (m_bounds[1 - rSignY].y - ray.origin().y) * invDirY;
 	if ((tmin > tymax) || (tymin > tmax)) return 0;
@@ -128,6 +125,6 @@ bool AABox::intersect(const Ray ray, vec2 &hits) const
 	hits[MAX] = tmax;
 	//if (tmin > r.tmin) r.tmin = tmin;
 	//if (tmax < r.tmax) r.tmax = tmax;
-
+	
 	return true;
 }*/

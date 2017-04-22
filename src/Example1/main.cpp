@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
 			SDL_GL_SwapBuffers();
 
 			clock_t frameEnd = clock();
-			float frameTime = frameEnd - frameStart;
+			double frameTime = frameEnd - frameStart;
 
 			int lastId = renderer.lastFrameId();
 			std::ostringstream oss;
@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
 	uint64_t rayC = Scene::s_traceStats.rayCount;
 
 	// 83764917 315623640(3.77) 1237294818(14.77)
-	printf("%ul %ul %ul\n",rayC, triC, boxC);
+	printf("%llu %llu %llu\n",rayC, triC, boxC);
 	
 	SDL_Quit();
 

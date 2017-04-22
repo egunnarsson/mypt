@@ -873,7 +873,7 @@ void eObjLoader::calculateMissingNormals()
 			Direction normal(1,0,0); // Todo: calculate normal!!!
 
 			m_normals.push_back(normal);
-			size_t normalIndex = m_normals.size() - 1;
+			unsigned int normalIndex = static_cast<unsigned int>(m_normals.size() - 1);
 
 			if (index1[NORMAL] == NO_INDEX)
 				index1[NORMAL] = normalIndex;
@@ -891,7 +891,7 @@ void eObjLoader::calculateMissingNormals()
 void eObjLoader::fillMissingTexCoords(vec2 defaultValue)
 {
 	m_texCoords.push_back(defaultValue);
-	size_t defaultIndex = m_texCoords.size() - 1;
+	unsigned int defaultIndex = static_cast<unsigned int>(m_texCoords.size() - 1);
 	bool added = false;
 
 	for (auto it = m_indices.begin(); it != m_indices.end(); ++it)

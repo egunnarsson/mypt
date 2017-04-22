@@ -90,7 +90,7 @@ void Triangle::transform(mat4 matrix)
 	m_p0 = Position(p0.x, p0.y, p0.z);
 	m_p1 = Position(p1.x, p1.y, p1.z);
 	m_p2 = Position(p2.x, p2.y, p2.z);
-
+	
 	m_e1 = Direction::cast(m_p1 - m_p0);
 	m_e2 = Direction::cast(m_p2 - m_p0);
 
