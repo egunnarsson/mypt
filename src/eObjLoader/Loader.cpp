@@ -827,6 +827,7 @@ bool eObjLoader::load()
 
 	}
 
+	m_loaded = true;
 	return true;
 }
 

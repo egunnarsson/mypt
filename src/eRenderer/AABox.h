@@ -4,7 +4,6 @@
 
 #include "Defines.h"
 #include "Ray.h"
-//#include "Material.h"
 #include "Triangle.h"
 
 class AABox
@@ -22,19 +21,18 @@ public:
 
 	number intersect(const Ray ray) const;
 	//bool intersect(const Ray ray, vec2 &hits) const;
+    bool intersect(AABox) const;
 	
 	const Position& mmin() const { return m_bounds[MIN]; }
 	const Position& mmax() const { return m_bounds[MAX]; }
 
 	Position getCenter() const;
+    bool empty() const;
 
 private:
 
 	enum { MIN = 0, MAX = 1 };
 
-	//vec3 m_p0, m_p1;
-	//Position m_position;
-	//Position m_size;
 	Position m_bounds[2];
 };
 

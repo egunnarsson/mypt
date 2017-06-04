@@ -98,6 +98,7 @@ int main(int argc, char *argv[])
 		{
 			if (loader.hasMissingNormal())
 			{
+				printf("calculateMissingNormals\n");
 				loader.calculateMissingNormals();
 			}
 
@@ -107,9 +108,6 @@ int main(int argc, char *argv[])
 			}
 
 			Mesh *mesh = Mesh::makeMesh(loader.indices(), loader.positions(), loader.normals(), loader.texCoords());
-
-			//Mesh *mesh = new Mesh();
-			//load_obj("camera.obj", *mesh);
 
 			mat4 scale = mat4::make_scale(12.0);
 			mat4 rotation = mat4::make_rotation(Direction(0, 1, 0), toRadians(25));
@@ -128,6 +126,7 @@ int main(int argc, char *argv[])
 		{
 			if (loader.hasMissingNormal())
 			{
+				printf("calculateMissingNormals\n");
 				loader.calculateMissingNormals();
 			}
 
@@ -137,9 +136,6 @@ int main(int argc, char *argv[])
 			}
 
 			Mesh *mesh = Mesh::makeMesh(loader.indices(), loader.positions(), loader.normals(), loader.texCoords());
-
-			//Mesh *mesh = new Mesh();
-			//load_obj("camera.obj", *mesh);
 
 			mat4 scale = mat4::make_scale(12.0);
 			mat4 rotation = mat4::make_rotation(Direction(0, 1, 0), toRadians(25));
@@ -192,7 +188,7 @@ int main(int argc, char *argv[])
 
 			frameStart = frameEnd;
 
-			printf("%f\n", frameTime);
+			//printf("%f\n", frameTime);
 
 			SDL_WM_SetCaption(oss.str().c_str(), 0);
 		}

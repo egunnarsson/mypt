@@ -35,26 +35,26 @@ class Mesh
 {
 public:
 
-	std::vector<Material> m_materials;
-	std::vector<Chunk>    m_chunks;
-
-	//AABox                 m_boundingBox;
-	//BVH                 m_boundingVolumeHirarchy;
+    const std::vector<Chunk>& chunks() const;
+    const std::vector<Material>& materials() const;
+    AABox getBoundingBox() const;
 
 	void setMaterial(Material material);
 
-	//void calculateAccelerationStructure(); // computes bounding box and bvh
-
-	//bool intersect(Ray r, number &t, Direction &n, Material &m) const; //number &t, Material &m, vec3 &normal
-
 	void transform(mat4 matrix);
-
-	AABox getBoundingBox() const;
 
 	static Mesh* makeMesh(const std::vector<vector3<unsigned int, POSITION_TYPE> > &indices, const std::vector<vector3<float, POSITION_TYPE> > &positions, const std::vector<vector3<float, DIRECTION_TYPE> > &normals, const std::vector<vector2<float> > &texCoords);
 	static Mesh* makeBox(Position position, number width, number height, const Material *material = nullptr);
 	static Mesh* makePlane(Position p1, Position p2, Position normal, const Material *material = nullptr);
 	static Mesh* makePlane(Position translation, vector3<number, SCALE_TYPE> scale, AxisRotation rotation, const Material *material = nullptr);
+
+private:
+
+    void calculateAABox();
+
+    std::vector<Material> m_materials;
+    std::vector<Chunk>    m_chunks;
+    AABox m_box;
 
 };
 

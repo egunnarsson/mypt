@@ -51,6 +51,11 @@ Position AABox::getCenter() const
 	return m_bounds[MIN] + ((m_bounds[MAX] - m_bounds[MIN]) * 0.5);
 }
 
+bool AABox::empty() const
+{
+    return m_bounds[MIN] == m_bounds[MAX];
+}
+
 std::pair<AABox, AABox> AABox::split(int axis) const
 {
 	Position dAxis(0);
@@ -90,6 +95,14 @@ number AABox::intersect(const Ray ray) const
 
 
 	return tmin; // tmin < 0 ?
+}
+
+bool AABox::intersect(AABox box) const
+{
+    return 
+        (m_bounds[MIN].x <= box.m_bounds[MAX].x && box.m_bounds[MIN].x <= m_bounds[MAX].x) &&
+        (m_bounds[MIN].y <= box.m_bounds[MAX].y && box.m_bounds[MIN].y <= m_bounds[MAX].y) &&
+        (m_bounds[MIN].z <= box.m_bounds[MAX].z && box.m_bounds[MIN].z <= m_bounds[MAX].z);
 }
 
 /*

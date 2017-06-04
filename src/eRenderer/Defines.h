@@ -22,12 +22,8 @@ typedef vector3<number, COLOR_TYPE> Color;
 typedef vector3<float, COLOR_TYPE> fColor;
 typedef vector3<number, SCALE_TYPE> Scale;
 
-template<class T>
-class sp : public std::shared_ptr<T>
-{
-public:
-	sp(T* ptr) : std::shared_ptr<T>(ptr) {}
-};
+template<typename T>
+using sp = std::shared_ptr<T>;
 
 //#define EPSILON 1e-5
 //std::numeric_limits<number>::epsilon()

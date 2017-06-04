@@ -56,8 +56,8 @@ namespace
 					return total;
 				}
 
-				Material &mat = hit.mesh->m_materials[hit.chunkIndex];
-				Direction &normal = hit.mesh->m_chunks[hit.chunkIndex].m_normals[hit.triangleIndex * 3];
+				const Material &mat = hit.mesh->materials()[hit.chunkIndex];
+				const Direction &normal = hit.mesh->chunks()[hit.chunkIndex].m_normals[hit.triangleIndex * 3];
 
 				Color color = mat.m_color;
 				const number p = tmax(tmax(color.x, color.y), color.z);
@@ -270,9 +270,9 @@ int Renderer::lastFrameId() const
 void Renderer::loop()
 {
 	WorkerData data;
-	data.m_scene       = m_scene;
-	data.m_camera      = m_camera;
-	data.m_buffer      = m_buffer;
+	data.m_scene  = m_scene;
+	data.m_camera = m_camera;
+	data.m_buffer = m_buffer;
 
 	std::atomic<unsigned int> seed(0);
 

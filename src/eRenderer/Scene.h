@@ -34,7 +34,7 @@ public:
 	void removeMesh(Mesh *mesh);
 
 	size_t meshCount() const;
-	sp<Mesh> getMesh(size_t index) const;
+    sp<const Mesh> getMesh(size_t index) const;
 
 	//bool intersect(Intersection &intersection) const;
 	bool intersect(const Ray &r, number &t, Material &m, Direction &normal) const;

@@ -3,207 +3,263 @@
 #include <queue>
 #include <functional>
 
-#include <tbb\cache_aligned_allocator.h>
+#include "Log.h"
 
 #include "AABVH.h"
 #include "Scene.h"
 #include "Mesh.h"
 #include "Triangle.h"
 
-/*AABVH::Element::Element() :
-	m_isLeaf(false),
-	m_box(),
-	right(nullptr),
-	left(nullptr),
-	m_mesh(nullptr)
-{
-}*/
-
-AABVH::Element::Element(Triangle *_triangle, uint_fast32_t _chunkIndex, uint_fast32_t _triangleIndex) :
-	m_isLeaf(true)
-{
-	triangle = _triangle;
-	chunkIndex = _chunkIndex;
-	triangleIndex = _triangleIndex;
-}
-
-AABVH::Element::Element(Mesh *mesh, Element *_left, Element *_right) :
-	m_box(_left->getBox(), _right->getBox()),
-	left(_left),
-	right(_right),
-	m_mesh(mesh),
-	m_isLeaf(false)
-{
-	assert(mesh != nullptr);
-	assert(_left != nullptr);
-	assert(_right != nullptr);
-}
-
-AABVH::Element::Element(Element *_left, Element *_right) :
-	m_box(_left->getBox(), _right->getBox()),
-	left(_left),
-	right(_right),
+AABVH::Element::Element() :
+	m_isLeaf(true),
 	m_mesh(nullptr),
-	m_isLeaf(false)
+	m_triangle(nullptr),
+	m_chunkIndex(0),
+	m_triangleIndex(0)
 {
-	assert(_left != nullptr);
-	assert(_right != nullptr);
 }
 
-AABVH::Element::~Element()
+AABVH::Element::Element(AABox aabox, Element *left, Element *right) :
+	m_isLeaf(false),
+	m_box(aabox),
+	m_left(left),
+	m_right(right)
 {
-	/*if (!m_isLeaf && m_mesh == nullptr)
-	{
-		if (!left->m_isLeaf && left->m_mesh)
-			delete[] left;
-		else
-			delete left;
-		if (!right->m_isLeaf && right->m_mesh)
-			delete[] right;
-		else
-			delete right;
-	}*/
-	if (m_isLeaf)
-	{
-		delete left;
-		delete right;
-	}
 }
 
-AABox AABVH::Element::getBox()
+AABVH::Element::Element(const Mesh *mesh, const Triangle *triangle, uint_fast32_t chunkIndex, uint_fast32_t triangleIndex) :
+	m_isLeaf(true),
+	m_mesh(mesh),
+	m_triangle(triangle),
+	m_chunkIndex(chunkIndex),
+	m_triangleIndex(triangleIndex)
+{
+}
+
+AABVH::Element::Element(const Element &e)
+{
+    m_isLeaf = e.m_isLeaf;
+    if (e.m_isLeaf)
+    {
+        m_mesh = e.m_mesh;
+        m_triangle = e.m_triangle;
+        m_chunkIndex = e.m_chunkIndex;
+        m_triangleIndex = e.m_triangleIndex;
+    }
+    else
+    {
+        m_box = e.m_box;
+        m_left = e.m_left;
+        m_right = e.m_right;
+    }
+}
+
+AABVH::Element& AABVH::Element::operator = (const Element &e)
+{
+    m_isLeaf = e.m_isLeaf;
+    if (e.m_isLeaf)
+    {
+        m_mesh = e.m_mesh;
+        m_triangle = e.m_triangle;
+        m_chunkIndex = e.m_chunkIndex;
+        m_triangleIndex = e.m_triangleIndex;
+    }
+    else
+    {
+        m_box = e.m_box;
+        m_left = e.m_left;
+        m_right = e.m_right;
+    }
+    return *this;
+}
+
+AABox AABVH::Element::getBox() const
 {
 	if (m_isLeaf)
-		return AABox(*triangle);
+		return AABox(*m_triangle);
 	else
 		return m_box;
 }
 
-AABVH::AABVH() :
-	m_root(nullptr)
+AABVH::AABVH()
 {
 }
 
-AABVH::Element* AABVH::buildMeshTree(sp<Mesh> meshPtr) const 
+AABVH::Element *AABVH::buildMeshTree(std::vector<sp<const Mesh>> meshes, uint_fast32_t &elementIndex)
 {
-	//std::queue<Element*> queue;
-	
-	std::vector<Element*> queue;
+    std::vector<Element> triangles;
+    for (size_t i = 0; i < meshes.size(); ++i)
+    {
+        sp<const Mesh> meshPtr = meshes[i];
+        uint_fast32_t chunkIndex = 0;
+        for (auto chunkIt = meshPtr->chunks().begin(); chunkIt < meshPtr->chunks().end(); ++chunkIt)
+        {
+            uint_fast32_t triangleIndex = 0;
+            for (auto triIt = (*chunkIt).m_triangles.begin(); triIt < (*chunkIt).m_triangles.end(); ++triIt)
+            {
+                triangles.push_back(Element(meshPtr.get(), &(*triIt), chunkIndex, triangleIndex));
+                ++triangleIndex;
+            }
+            ++chunkIndex;
+        }
+    }
 
-	uint_fast32_t chunkIndex = 0;
-	for (auto chunkIt = meshPtr->m_chunks.begin(); chunkIt < meshPtr->m_chunks.end(); ++chunkIt)
-	{
-		uint_fast32_t triangleIndex = 0;
-		for (auto triIt = (*chunkIt).m_triangles.begin(); triIt < (*chunkIt).m_triangles.end(); ++triIt)
-		{
-			queue.push_back(new Element(&(*triIt), chunkIndex, triangleIndex));
-			++triangleIndex;
-		}
-		++chunkIndex;
-	}
+    auto addElement = [this, &elementIndex](const Element &e) -> Element*
+    {
+        this->m_elements[elementIndex] = e;
+        elementIndex--;
+        return &this->m_elements[elementIndex + 1];
+    };
 
-	printf("triangles %zu\n", queue.size());
-	//Element *skipList = new Element[queue.size() + queue.size() - 1];
-	//tbb::fixed_pool
+    std::function<Element*(int, const std::vector<Element>&)> split;
+    split = [this, &addElement, &split](int axis, const std::vector<Element> &elements) -> Element*
+    {
+        if (elements.empty())
+        {
+            return nullptr;
+        }
+        else if (elements.size() == 1)
+        {
+            return addElement(elements.front());
+        }
+        else if (elements.size() == 2)
+        {
+            AABox box(elements[0].getBox(), elements.back().getBox());
 
-	int elementCount = 0;
+            Element *front = addElement(elements.front());
+            Element *back = addElement(elements.back());
 
-	std::function<Element*(AABox, int, const std::vector<Element*>&)> split;
+            return addElement(Element(box, front, back));
+        }
+        else
+        {
+            AABox bounds(elements[0].getBox());
+            for (Element e : elements)
+            {
+                bounds.grow(e.getBox());
+            }
 
-	split = [&split, &meshPtr, &elementCount](const AABox &bounds, int axis, const std::vector<Element*> &elements) -> Element*
-	{
-		if (elements.empty())
-		{
-			return nullptr;
-		}
-		else if (elements.size() == 1)
-		{
-			return elements.front();
-		}
-		else if (elements.size() == 2)
-		{
-			elementCount++;
-			return new Element(meshPtr.get(), elements.front(), elements.back());
-		}
-		else
-		{
-			std::vector<Element*> left;
-			std::vector<Element*> right;
+            for (int loop = 0; loop < 3; loop++)
+            {
+                std::vector<Element> left;
+                std::vector<Element> right;
 
-			number border = bounds.getCenter()[axis];
+                number border = bounds.getCenter()[axis];
 
-			for (Element *e : elements)
-			{
-				if (e->getBox().getCenter()[axis] < border)
-				{
-					left.push_back(e);
-				}
-				else
-				{
-					right.push_back(e);
-				}
-			}
+                for (Element e : elements)
+                {
+                    if (e.getBox().getCenter()[axis] < border)
+                    {
+                        left.push_back(e);
+                    }
+                    else
+                    {
+                        right.push_back(e);
+                    }
+                }
 
-			std::pair<AABox, AABox> newBoxes = bounds.split(axis);
-			int newAxis = (axis + 1) % 3;
+                if (left.size() != 0 && right.size() != 0)
+                {
+                    int newAxis = (axis + 1) % 3;
 
-			Element *rightElement = split(newBoxes.first, newAxis, left);
-			Element *leftElement = split(newBoxes.second, newAxis, right);
+                    Element *rightElement = split(newAxis, left);
+                    Element *leftElement = split(newAxis, right);
 
-			if (rightElement == nullptr)
-				return leftElement;
-			else if (leftElement == nullptr)
-				return rightElement;
-			else 
-			{
-				elementCount++;
-				return new Element(meshPtr.get(), rightElement, leftElement);
-			}
-		}
+                    AABox box(rightElement->getBox(), leftElement->getBox());
+                    return addElement(Element(box, rightElement, leftElement));
+                }
 
-	};
+                axis = (axis + 1) % 3;
+            }
 
-	Element *meshElement = split(meshPtr->getBoundingBox(), 0, queue);
-	if (meshElement->m_isLeaf) // the single triangle mesh
-	{
-		elementCount++;
-		meshElement = new Element(meshElement, nullptr); // this nullptr will cause a crash...
-	}
-	meshElement->m_mesh = meshPtr.get();
-	
-	printf("elemnts %zu\n", elementCount + queue.size());
+            // we're stuck, just split elements at the middle
 
-	return meshElement;
+            std::vector<Element> sorted(elements);
+            std::sort(sorted.begin(), sorted.end(), [axis](Element a, Element b) {
+                return b.getBox().getCenter()[axis] < a.getBox().getCenter()[axis];
+            });
+
+            std::size_t const half_size = sorted.size() / 2;
+            std::vector<Element> left(sorted.begin(), sorted.begin() + half_size);
+            std::vector<Element> right(sorted.begin() + half_size, sorted.end());
+
+            int newAxis = (axis + 1) % 3;
+
+            Element *rightElement = split(newAxis, left);
+            Element *leftElement = split(newAxis, right);
+
+            AABox box(rightElement->getBox(), leftElement->getBox());
+            return addElement(Element(box, rightElement, leftElement));
+        }
+    };
+
+    return split(0, triangles);
 }
 
-AABVH::AABVH(const Scene *scene) :
-	m_root(nullptr)
+AABVH::Element *AABVH::joinElements(std::queue<Element*> &elements, uint_fast32_t &elementIndex)
 {
-	std::queue<Element* /*, std::vector<Element*> */> meshBoxes;
-	const size_t count = scene->meshCount();
-	for (size_t i = 0; i < count; ++i)
-	{
-		sp<Mesh> meshPtr = scene->getMesh(i);
-		Element *meshElement = buildMeshTree(meshPtr);
+    while (elements.size() >= 2)
+    {
+        Element *left = elements.front(); elements.pop();
+        Element *right = elements.front(); elements.pop();
 
-		if (meshElement)
-			meshBoxes.push(meshElement);
-	}
+        AABox box(left->getBox(), right->getBox());
+        m_elements[elementIndex] = Element(box, left, right);
+        elementIndex--;
 
-	// build tree structure of mesh elements
-	while (meshBoxes.size() >= 2)
-	{
-		Element *left = meshBoxes.front(); meshBoxes.pop();
-		Element *right = meshBoxes.front(); meshBoxes.pop();
-		meshBoxes.push(new Element(left, right));
-	}
-
-	if (!meshBoxes.empty())
-		m_root = meshBoxes.front();
+        elements.push(&this->m_elements[elementIndex + 1]);
+    }
+    return elements.front();
 }
 
-AABVH::~AABVH()
+AABVH::AABVH(const Scene *scene)
 {
-	delete m_root;
+    std::vector<sp<const Mesh>> meshes;
+    size_t triangleCount = 0;
+    for (size_t i = 0; i < scene->meshCount(); ++i)
+    {
+        sp<const Mesh> meshPtr = scene->getMesh(i);
+        meshes.push_back(meshPtr);
+        for (auto chunkIt = meshPtr->chunks().begin(); chunkIt < meshPtr->chunks().end(); ++chunkIt)
+        {
+            triangleCount += chunkIt->m_triangles.size();
+        }
+    }
+
+    size_t poolSize = triangleCount + triangleCount - 1;
+    m_elements.resize(poolSize);
+    uint_fast32_t elementIndex = m_elements.size() - 1;
+
+    std::queue<Element*> elements;
+
+    // find meshes that overlap
+    while (!meshes.empty())
+    {
+        sp<const Mesh> mesh = meshes.back();
+        meshes.pop_back();
+        AABox box = mesh->getBoundingBox();
+        std::vector<sp<const Mesh>> group;
+        group.push_back(mesh);
+        for (auto it = meshes.begin(); it != meshes.end();)
+        {
+            if (box.intersect((*it)->getBoundingBox()))
+            {
+                group.push_back(*it);
+                it = meshes.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        elements.push(buildMeshTree(group, elementIndex));
+    }
+
+    // loop
+    // find elements thar overlap
+    // if none pick two (with smallest aabox)
+    
+    joinElements(elements, elementIndex);
 }
 
 bool AABVH::intersect(Ray ray, HitInfo &hit, Statistics &stats) const
@@ -214,29 +270,26 @@ bool AABVH::intersect(Ray ray, HitInfo &hit, Statistics &stats) const
 	hit.chunkIndex = 0;
 	hit.triangleIndex = 0;
 
-	if (m_root == nullptr)
+	if (m_elements.empty())
 		return false;
 
 	number t = NUM_INF;
 
-	Mesh *currentMesh = nullptr;
-	Mesh *hitMesh = nullptr;
-	Element *hitElement = nullptr;
+	const Element *hitElement = nullptr;
 
 	uint64_t triCount = 0;
 	uint64_t boxCount = 0;
 
-	std::vector<Element*, tbb::cache_aligned_allocator<Element*> > stack;
-	stack.push_back(m_root);
+	std::vector<const Element*, tbb::cache_aligned_allocator<const Element*> > stack;
+	stack.push_back(&m_elements[0]);
 
-	auto intersectElement = [&](Element *element) -> number {
+	auto intersectElement = [&](const Element *element) -> number {
 		if (element->m_isLeaf)
 		{
-			number hit = element->triangle->intersect(ray); ++triCount;
+			number hit = element->m_triangle->intersect(ray); ++triCount;
 			if (hit && hit < t)
 			{
 				t = hit;
-				hitMesh = currentMesh;
 				hitElement = element;
 			}
 			return 0;
@@ -251,16 +304,11 @@ bool AABVH::intersect(Ray ray, HitInfo &hit, Statistics &stats) const
 
 	while (!stack.empty())
 	{
-		Element &current = *stack.back();
+		const Element *current = stack.back();
 		stack.pop_back();
 
-		if (current.m_mesh)
-		{
-			currentMesh = current.m_mesh;
-		}
-		
-		number leftHit = intersectElement(current.left);
-		number rightHit = intersectElement(current.right);
+		number leftHit = intersectElement(current->m_left);
+		number rightHit = intersectElement(current->m_right);
 
 		if (leftHit)
 		{
@@ -268,98 +316,25 @@ bool AABVH::intersect(Ray ray, HitInfo &hit, Statistics &stats) const
 			{
 				if (leftHit < rightHit)
 				{
-					stack.push_back(current.right);
-					stack.push_back(current.left);
+					stack.push_back(current->m_right);
+					stack.push_back(current->m_left);
 				}
 				else
 				{
-					stack.push_back(current.left);
-					stack.push_back(current.right);
+					stack.push_back(current->m_left);
+					stack.push_back(current->m_right);
 				}
 			}
 			else
 			{
-				stack.push_back(current.left);
+				stack.push_back(current->m_left);
 			}
 		}
 		else if (rightHit)
 		{
-			stack.push_back(current.right);
+			stack.push_back(current->m_right);
 		}
 	}
-
-	/*while (!stack.empty())
-	{
-		Element &current = *stack.back();
-		stack.pop_back();
-
-		if (current.m_mesh)
-		{
-			currentMesh = current.m_mesh;
-		}
-
-		if (current.m_leafChildren)
-		{
-			number leftHit = current.left.leaf.triangle->intersect(ray); ++triCount;
-
-			if (leftHit && leftHit < t)
-			{
-				t = leftHit;
-				hitMesh = currentMesh;
-				hitLeaf = &current.left.leaf;
-			}
-
-			if (current.right.leaf.triangle)
-			{
-				number rightHit = current.right.leaf.triangle->intersect(ray); ++triCount;
-
-				if (rightHit && rightHit < t)
-				{
-					t = rightHit;
-					hitMesh = currentMesh;
-					hitLeaf = &current.right.leaf;
-				}
-			}
-		}
-		else
-		{
-			/ *if (current.m_mesh)
-			{
-				currentMesh = current.m_mesh;
-			}* /
-
-			number leftHit = current.left.element->m_box.intersect(ray); ++boxCount;
-			number rightHit = current.right.element->m_box.intersect(ray); ++boxCount;
-
-			leftHit = leftHit > t ? 0 : leftHit;
-			rightHit = rightHit > t ? 0 : rightHit;
-
-			if (leftHit)
-			{
-				if (rightHit)
-				{
-					if (leftHit < rightHit)
-					{
-						stack.push_back(current.right.element);
-						stack.push_back(current.left.element);
-					}
-					else
-					{
-						stack.push_back(current.left.element);
-						stack.push_back(current.right.element);
-					}
-				}
-				else
-				{
-					stack.push_back(current.left.element);
-				}
-			}
-			else if (rightHit)
-			{
-				stack.push_back(current.right.element);
-			}
-		}
-	}*/
 
 	stats.rayCount++;
 	stats.boxCount += boxCount;
@@ -368,10 +343,10 @@ bool AABVH::intersect(Ray ray, HitInfo &hit, Statistics &stats) const
 	if (hitElement)
 	{
 		hit.t = t;
-		hit.mesh = hitMesh;
-		hit.triangle = hitElement->triangle;
-		hit.chunkIndex = hitElement->chunkIndex;
-		hit.triangleIndex = hitElement->triangleIndex;
+		hit.mesh = hitElement->m_mesh;
+		hit.triangle = hitElement->m_triangle;
+		hit.chunkIndex = hitElement->m_chunkIndex;
+		hit.triangleIndex = hitElement->m_triangleIndex;
 		return true;
 	}
 

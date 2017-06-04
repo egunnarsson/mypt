@@ -20,8 +20,9 @@ public:
 
 	static const unsigned int NO_INDEX;
 
-	static const unsigned int
-		POSITION; static const unsigned int NORMAL; static const unsigned int TEX_COORD;
+	static const unsigned int POSITION; 
+	static const unsigned int NORMAL; 
+	static const unsigned int TEX_COORD;
 
 	eObjLoader(const std::string &fileName);
 	~eObjLoader();

@@ -1,101 +1,27 @@
 
 #include "Mesh.h"
 
-void Mesh::setMaterial(Material material)
+const std::vector<Chunk>& Mesh::chunks() const
 {
-	for (size_t i = 0; i < m_materials.size(); ++i)
-	{
-		m_materials[i] = material;
-	}
+    return m_chunks;
 }
 
-/*void Mesh::getShadingData(const Triangle *tri, const Material *&material, Direction &normal, vec2 &textureCoordinate) const
+const std::vector<Material>& Mesh::materials() const
 {
-	auto index = m_triangleMap.find(tri);
-	if (index != m_triangleMap.end())
-	{
-		material = &m_materials.at(index->second);
-		normal = m_chunks[index->second].
-	}
-}*/
-
-/*void Mesh::calculateAccelerationStructure()
-{
-	Position min(NUM_INF, NUM_INF, NUM_INF);
-	Position max(-NUM_INF, -NUM_INF, -NUM_INF);
-
-	const size_t chunks = m_chunks.size();
-	for (size_t c=0; c<chunks; ++c)
-	{
-		const size_t elements = m_chunks[c].m_triangles.size();
-		for (size_t e=0; e<elements; ++e)
-		{
-			Triangle &tri = m_chunks[c].m_triangles[e];
-			min = vmin(vmin(vmin(min, tri.m_p0), tri.m_p1), tri.m_p2);
-			max = vmax(vmax(vmax(max, tri.m_p0), tri.m_p1), tri.m_p2);
-		}
-	}
-
-	m_boundingBox = AABox(min, max);
-}*/
-
-/*bool Mesh::intersect(Ray r, number &t, Direction &normal, Material &material) const
-{
-	if (!m_boundingBox.intersect(r))
-		return false;
-
-	t = INFINITY;
-
-	size_t hitChunk, hitElement;
-
-	const size_t chunks = m_chunks.size();
-	for (size_t c=0; c<chunks; ++c)
-	{
-		const size_t elements = m_chunks[c].m_triangles.size();
-		for (size_t e=0; e<elements; ++e)
-		{
-			number t2 = m_chunks[c].m_triangles[e].intersect(r);
-			if (t2 && t2 < t)
-			{
-				t          = t2;
-				hitChunk   = c;
-				hitElement = e;
-			}
-		}
-	}
-
-	if (t == INFINITY)
-		return false;
-	
-	material = m_materials[hitChunk];
-	//element  = m_chunks[hitChunk][hitElement];
-	normal = m_chunks[hitChunk].m_normals[hitElement*3];
-	
-	return true;
-}*/
+    return m_materials;
+}
 
 AABox Mesh::getBoundingBox() const
 {
-	AABox box;
+	return m_box;
+}
 
-	for (auto it = m_chunks.begin(); it < m_chunks.end(); it++)
-	{
-		for (auto it2 = it->m_triangles.begin(); it2 < it->m_triangles.end(); it2++)
-		{
-			box = AABox(*it2);
-			break;
-		}
-	}
-
-	for (auto it = m_chunks.begin(); it < m_chunks.end(); it++)
-	{
-		for (auto it2 = it->m_triangles.begin(); it2 < it->m_triangles.end(); it2++)
-		{
-			box.grow(AABox(*it2));
-		}
-	}
-
-	return box;
+void Mesh::setMaterial(Material material)
+{
+    for (size_t i = 0; i < m_materials.size(); ++i)
+    {
+        m_materials[i] = material;
+    }
 }
 
 void Mesh::transform(mat4 matrix)
@@ -120,7 +46,27 @@ void Mesh::transform(mat4 matrix)
 		}
 	}
 
-	//calculateAccelerationStructure();
+    calculateAABox();
+}
+
+void Mesh::calculateAABox()
+{
+    for (auto it = m_chunks.begin(); it < m_chunks.end(); it++)
+    {
+        for (auto it2 = it->m_triangles.begin(); it2 < it->m_triangles.end(); it2++)
+        {
+            m_box = AABox(*it2);
+            break;
+        }
+    }
+
+    for (auto it = m_chunks.begin(); it < m_chunks.end(); it++)
+    {
+        for (auto it2 = it->m_triangles.begin(); it2 < it->m_triangles.end(); it2++)
+        {
+            m_box.grow(AABox(*it2));
+        }
+    }
 }
 
 Mesh* Mesh::makeBox(Position position, number width, number height, const Material *material /*= nullptr*/)
@@ -168,7 +114,7 @@ Mesh* Mesh::makeMesh(const std::vector<vector3<unsigned int, POSITION_TYPE> > &i
 	}
 
 	mesh->m_materials.push_back(Material(DIFFUSE, Color(0), Color(0.5, 0.5, 0.5)));
-	//mesh->calculateAccelerationStructure();
+    mesh->calculateAABox();
 
 	return mesh;
 }

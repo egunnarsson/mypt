@@ -26,11 +26,17 @@ void Scene::addMesh(sp<Mesh> mesh)
 	m_dirty = true;
 }
 
-sp<Mesh> Scene::getMesh(size_t index) const
+sp<const Mesh> Scene::getMesh(size_t index) const
 {
-	return m_scene[index];
+    return m_scene[index];
+}
+
+/*
+sp<Mesh> Scene::getMesh(size_t index)
+{
 	// todo figure out if mesh changes
 }
+*/
 
 size_t Scene::meshCount() const
 {

@@ -3,8 +3,10 @@
 #define AABVH_H
 
 #include <vector>
+#include <queue>
 
 #include <tbb\atomic.h>
+#include <tbb\cache_aligned_allocator.h>
 
 #include "Ray.h"
 #include "AABox.h"
@@ -20,13 +22,14 @@ public:
 	struct HitInfo
 	{
 		number t;
-		Mesh *mesh;
-		Triangle *triangle;
+		const Mesh *mesh;
+		const Triangle *triangle;
 		uint_fast32_t chunkIndex;
 		uint_fast32_t triangleIndex;
 	};
 
-	struct Statistics {
+	struct Statistics 
+	{
 		tbb::atomic<uint64_t> rayCount;
 		tbb::atomic<uint64_t> triCount;
 		tbb::atomic<uint64_t> boxCount;
@@ -34,88 +37,47 @@ public:
 
 	AABVH();
 	AABVH(const Scene *scene);
-	virtual ~AABVH();
 
 	bool intersect(Ray ray, HitInfo &hit, Statistics &stat) const;
 
 private:
-	/*
-	struct StackElement {
-		bool m_leaf;
-		AABox m_box;
-	};
-
-	std::vector<StackElement> m_skipList;
-	*/
-	/*
-	struct LeafData {
-
-		Triangle *triangle;
-		uint_fast32_t chunkIndex;
-		uint_fast32_t triangleIndex;
-	};
-	*/
-	/*struct Element2 {
-
-		int data;
-
-		union {
-			AABox box;
-			Triangle leaf;
-		};
-
-		bool isLeaf() { return data > 0; }
-		int id() { return abs(data); }
-
-	};*/
 
 	__declspec(align(16)) struct Element
 	{
-		//Element();
-		Element(Mesh *mesh, Element *left, Element *right);
-		Element(Element *left, Element *right);
-		Element(Triangle *triangle, uint_fast32_t chunkIndex, uint_fast32_t triangleIndex);
-		~Element();
+		Element();
+		Element(AABox aabox, Element *left, Element *right);
+		Element(const Mesh *mesh, const Triangle *triangle, uint_fast32_t chunkIndex, uint_fast32_t triangleIndex);
+
+        Element(const Element &);
+        Element& operator = (const Element &);
 
 		union
 		{
-			struct {
+			struct 
+            {
 				AABox m_box;
-				Element *right;
-				Element *left;
-				Mesh *m_mesh;
+                Element *m_left;
+                Element *m_right;
 			};
 
-			//LeafData leaf;
-			struct {
-				Triangle *triangle;
-				uint_fast32_t chunkIndex;
-				uint_fast32_t triangleIndex;
+			struct 
+            {
+				const Mesh *m_mesh;
+				const Triangle *m_triangle;
+				uint_fast32_t m_chunkIndex;
+				uint_fast32_t m_triangleIndex;
 			};
 		};
 
 		bool m_isLeaf;
 
-		AABox getBox();
-
-		/*union
-		{
-			Element *element;
-			LeafData leaf;
-		} left;
-
-		union
-		{
-			Element *element;
-			LeafData leaf;
-		} right;
-
-		Mesh *m_mesh;*/
+		AABox getBox() const;
 	};
 
-	Element *m_root;
+	std::vector<Element, tbb::cache_aligned_allocator<Element>> m_elements;
 
-	Element *buildMeshTree(sp<Mesh> meshPtr) const;
+	Element *buildMeshTree(std::vector<sp<const Mesh>> meshes, uint_fast32_t &elementIndex);
+    Element *joinElements(std::queue<Element*> &elements, uint_fast32_t &elementIndex);
 
 };
 
