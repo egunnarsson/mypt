@@ -228,7 +228,7 @@ AABVH::AABVH(const Scene *scene)
 
     size_t poolSize = triangleCount + triangleCount - 1;
     m_elements.resize(poolSize);
-    uint_fast32_t elementIndex = m_elements.size() - 1;
+    uint_fast32_t elementIndex = static_cast<uint_fast32_t>(m_elements.size() - 1);
 
     std::queue<Element*> elements;
 

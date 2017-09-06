@@ -93,7 +93,7 @@ U convert(T &a)
 	return U(a.x, a.y, a.z);
 }
 
-Mesh* Mesh::makeMesh(const std::vector<vector3<unsigned int, POSITION_TYPE> > &indices, const std::vector<vector3<float, POSITION_TYPE> > &positions, const std::vector<vector3<float, DIRECTION_TYPE> > &normals, const std::vector<vector2<float> > &texCoords)
+Mesh* Mesh::makeMesh(const std::vector<vector3<int, POSITION_TYPE> > &indices, const std::vector<vector3<float, POSITION_TYPE> > &positions, const std::vector<vector3<float, DIRECTION_TYPE> > &normals, const std::vector<vector2<float> > &texCoords)
 {
 	Mesh *mesh = new Mesh();
 
@@ -103,9 +103,9 @@ Mesh* Mesh::makeMesh(const std::vector<vector3<unsigned int, POSITION_TYPE> > &i
 	//for (vector3<unsigned int, POSITION_TYPE> index : indices)
 	for (auto it = indices.begin(); it != indices.end(); it += 3)
 	{
-		vector3<unsigned int, POSITION_TYPE> index1 = *it;
-		vector3<unsigned int, POSITION_TYPE> index2 = *(it + 1);
-		vector3<unsigned int, POSITION_TYPE> index3 = *(it + 2);
+		vector3<int, POSITION_TYPE> index1 = *it;
+		vector3<int, POSITION_TYPE> index2 = *(it + 1);
+		vector3<int, POSITION_TYPE> index3 = *(it + 2);
 
 		c.addTriangle(
 			Position::castT(positions[index1[0]]), Direction::castT(normals[index1[1]]), vec2::castT(texCoords[index1[2]]),

@@ -227,8 +227,8 @@ public:
 	INL vector3& normalize()
 	{
 		T s = lengthSquared();
-		if (s > 0.0) {
-			s = 1.0 / sqrt(s);
+		if (s > 0) {
+			s = 1 / sqrt(s);
 			x *= s;
 			y *= s;
 			z *= s;
@@ -256,6 +256,7 @@ public:
 		return vector3(y * v.z - z * v.y, z * v.x - x * v.z, x * v.y - y * v.x);
 	}
 };
+
 /*
 template <class T>
 class tDirection : public vector3<T, DIRECTION_TYPE>

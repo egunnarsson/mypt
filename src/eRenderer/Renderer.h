@@ -83,6 +83,9 @@ public:
 	void setScene(Scene *scene);
 	void setCamera(Camera *camera);
 
+    /*!
+    Returns the last completed frame or nullptr if no new frame has been completed since the last call. 
+    */
 	FramePtr getNextFrame();
 
 	void start();

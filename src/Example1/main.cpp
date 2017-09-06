@@ -34,6 +34,14 @@ namespace
 	GLuint tex = 0;
 };
 
+Material convertOBJMaterial(eobj::Material &objMaterial)
+{
+    Reflection reflection = DIFFUSE;
+    Color emission = Color::castT(objMaterial.ambient);
+    Color color = Color::castT(objMaterial.diffuse);
+    return Material(reflection, emission, color);
+}
+
 bool init_sdl()
 {
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -93,9 +101,10 @@ int main(int argc, char *argv[])
 	scene.addMesh(Mesh::makePlane(Position(0, 119, 0), Scale(39, 39, 39), AxisRotation(Direction(0, 0, 1), 0), &LIGHT_M));
 	
 	{
-		eObjLoader loader("gourd.obj");
+		eobj::Loader loader("gourd.obj");
 		if (loader.load())
 		{
+            /*
 			if (loader.hasMissingNormal())
 			{
 				printf("calculateMissingNormals\n");
@@ -106,24 +115,29 @@ int main(int argc, char *argv[])
 			{
 				loader.fillMissingTexCoords(eObjLoader::vec2(0, 0));
 			}
+            */
+            for (std::size_t i = 0; i < loader.chunkCount(); ++i)
+            {
+                Mesh *mesh = Mesh::makeMesh(loader.getChunkIndices(i), loader.positions(), loader.normals(), loader.texCoords());
 
-			Mesh *mesh = Mesh::makeMesh(loader.indices(), loader.positions(), loader.normals(), loader.texCoords());
+                mat4 scale = mat4::make_scale(12.0);
+                mat4 rotation = mat4::make_rotation(Direction(0, 1, 0), toRadians(25));
+                mat4 translate = mat4::make_translation(Position(20, 50, 0));
 
-			mat4 scale = mat4::make_scale(12.0);
-			mat4 rotation = mat4::make_rotation(Direction(0, 1, 0), toRadians(25));
-			mat4 translate = mat4::make_translation(Position(20, 50, 0));
+                mesh->transform(translate * rotation * scale);
+                mesh->setMaterial(convertOBJMaterial(loader.getMaterial(i)));
+                //mesh->setMaterial(GRAY_M);
 
-			mesh->transform(translate * rotation * scale);
-			mesh->setMaterial(GRAY_M);
-
-			scene.addMesh(mesh);
+                scene.addMesh(mesh);
+            }
 		}
 	}
 
 	{
-		eObjLoader loader("camera.obj");
+        eobj::Loader loader("camera.obj");
 		if (loader.load())
 		{
+            /*
 			if (loader.hasMissingNormal())
 			{
 				printf("calculateMissingNormals\n");
@@ -134,17 +148,21 @@ int main(int argc, char *argv[])
 			{
 				loader.fillMissingTexCoords(eObjLoader::vec2(0, 0));
 			}
+            */
+            for (std::size_t i = 0; i < loader.chunkCount(); ++i)
+            {
+                Mesh *mesh = Mesh::makeMesh(loader.getChunkIndices(i), loader.positions(), loader.normals(), loader.texCoords());
 
-			Mesh *mesh = Mesh::makeMesh(loader.indices(), loader.positions(), loader.normals(), loader.texCoords());
+                mat4 scale = mat4::make_scale(12.0);
+                mat4 rotation = mat4::make_rotation(Direction(0, 1, 0), toRadians(25));
+                mat4 translate = mat4::make_translation(Position(0, 10, 0));
 
-			mat4 scale = mat4::make_scale(12.0);
-			mat4 rotation = mat4::make_rotation(Direction(0, 1, 0), toRadians(25));
-			mat4 translate = mat4::make_translation(Position(0, 10, 0));
+                mesh->transform(translate * rotation * scale);
+                mesh->setMaterial(convertOBJMaterial(loader.getMaterial(i)));
+                //mesh->setMaterial(GRAY_M);
 
-			mesh->transform(translate * rotation * scale);
-			mesh->setMaterial(GRAY_M);
-
-			scene.addMesh(mesh);
+                scene.addMesh(mesh);
+            }
 		}
 	}
 	
