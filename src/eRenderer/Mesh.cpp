@@ -6,21 +6,16 @@ const std::vector<Chunk>& Mesh::chunks() const
     return m_chunks;
 }
 
-const std::vector<Material>& Mesh::materials() const
-{
-    return m_materials;
-}
-
 AABox Mesh::getBoundingBox() const
 {
 	return m_box;
 }
 
-void Mesh::setMaterial(Material material)
+void Mesh::setMaterial(std::shared_ptr<const IMaterial> material)
 {
-    for (size_t i = 0; i < m_materials.size(); ++i)
+    for (size_t i = 0; i < m_chunks.size(); ++i)
     {
-        m_materials[i] = material;
+        m_chunks[i].m_material = material;
     }
 }
 
@@ -69,7 +64,7 @@ void Mesh::calculateAABox()
     }
 }
 
-Mesh* Mesh::makeBox(Position position, number width, number height, const Material *material /*= nullptr*/)
+Mesh* Mesh::makeBox(Position position, number width, number height, std::shared_ptr<const IMaterial> material /*= nullptr*/)
 {
 /*	mesh.m_chunks.push_back(Chunk());
 	Chunk &c = mesh.m_chunks[0];
@@ -87,18 +82,11 @@ Mesh* Mesh::makeBox(Position position, number width, number height, const Materi
 	return nullptr;
 }
 
-template<class T, class U>
-U convert(T &a)
+void Mesh::addChunk(std::shared_ptr<const IMaterial> material, const std::vector<vector3<int, POSITION_TYPE> > &indices, const std::vector<vector3<float, POSITION_TYPE> > &positions, const std::vector<vector3<float, DIRECTION_TYPE> > &normals, const std::vector<vector2<float> > &texCoords)
 {
-	return U(a.x, a.y, a.z);
-}
-
-Mesh* Mesh::makeMesh(const std::vector<vector3<int, POSITION_TYPE> > &indices, const std::vector<vector3<float, POSITION_TYPE> > &positions, const std::vector<vector3<float, DIRECTION_TYPE> > &normals, const std::vector<vector2<float> > &texCoords)
-{
-	Mesh *mesh = new Mesh();
-
-	mesh->m_chunks.push_back(Chunk());
-	Chunk &c = mesh->m_chunks.back();
+	m_chunks.push_back(Chunk());
+	Chunk &c = m_chunks.back();
+    c.m_material = material;
 
 	//for (vector3<unsigned int, POSITION_TYPE> index : indices)
 	for (auto it = indices.begin(); it != indices.end(); it += 3)
@@ -113,10 +101,7 @@ Mesh* Mesh::makeMesh(const std::vector<vector3<int, POSITION_TYPE> > &indices, c
 			Position::castT(positions[index3[0]]), Direction::castT(normals[index3[1]]), vec2::castT(texCoords[index3[2]]));
 	}
 
-	mesh->m_materials.push_back(Material(DIFFUSE, Color(0), Color(0.5, 0.5, 0.5)));
-    mesh->calculateAABox();
-
-	return mesh;
+    calculateAABox(); // dont do this every time?
 }
 
 /*
@@ -148,14 +133,16 @@ void Mesh::makePlane(Mesh &mesh, vec3 p1, vec3 p2, vec3 normal)
 }
 */
 
-Mesh* Mesh::makePlane(Position translation, Scale scale, AxisRotation rotation, const Material *material /*= nullptr*/)
+Mesh* Mesh::makePlane(Position translation, Scale scale, AxisRotation rotation, std::shared_ptr<const IMaterial> material /*= nullptr*/)
 {
 	Mesh *mesh = new Mesh();
 
 	mesh->m_chunks.push_back(Chunk());
 	Chunk &c = mesh->m_chunks.back();
-
-	mesh->m_materials.push_back(Material(DIFFUSE, Color(0), Color(1, 0, 0)));
+    if (material != nullptr)
+        c.m_material = material;
+    else
+        c.m_material = std::shared_ptr<const SmallPtMaterial>(new DiffuseMaterial(Color(0), Color(1, 0, 0)));
 
 	c.m_triangles.push_back(Triangle(Position(-0.5, -0.5, -0.5), Position(0.5, -0.5, -0.5), Position(0.5, -0.5, 0.5)));
 	c.m_triangles.push_back(Triangle(Position(-0.5, -0.5, -0.5), Position(0.5, -0.5, 0.5), Position(-0.5, -0.5, 0.5)));
@@ -168,8 +155,6 @@ Mesh* Mesh::makePlane(Position translation, Scale scale, AxisRotation rotation, 
 		mat4::make_rotation(rotation.axis, toRadians(rotation.angle)) *
 		mat4::make_scale(scale));
 
-	if (material != nullptr)
-		mesh->setMaterial(*material);
 
 	return mesh;
 }

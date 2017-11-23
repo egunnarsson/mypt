@@ -181,6 +181,8 @@ bool Loader::load()
 
             if (parse_index(line, idx4)) // quad => make two triangles
             {
+                if (!adjust_index(idx4, count)) stop = true;
+
                 Triangle *t2 = addFace(currentChunk, smoothGroup, idx1, idx3, idx4);
 
                 m_normalMissing |= (idx1[NORMAL] == NO_INDEX || idx3[NORMAL] == NO_INDEX || idx4[NORMAL] == NO_INDEX);

@@ -17,6 +17,8 @@ struct Chunk
 	std::vector<Direction> m_normals;
 	std::vector<vec2>      m_textureCoordinates;
 
+    std::shared_ptr<const IMaterial> m_material;
+
 	void addTriangle(Position p0, Direction n0, vec2 uv0,
 					 Position p1, Direction n1, vec2 uv1,
 					 Position p2, Direction n2, vec2 uv2)
@@ -36,24 +38,22 @@ class Mesh
 public:
 
     const std::vector<Chunk>& chunks() const;
-    const std::vector<Material>& materials() const;
     AABox getBoundingBox() const;
 
-	void setMaterial(Material material);
+    void addChunk(std::shared_ptr<const IMaterial> material, const std::vector<vector3<int, POSITION_TYPE> > &indices, const std::vector<vector3<float, POSITION_TYPE> > &positions, const std::vector<vector3<float, DIRECTION_TYPE> > &normals, const std::vector<vector2<float> > &texCoords);
+	void setMaterial(std::shared_ptr<const IMaterial> material);
 
 	void transform(mat4 matrix);
 
-	static Mesh* makeMesh(const std::vector<vector3<int, POSITION_TYPE> > &indices, const std::vector<vector3<float, POSITION_TYPE> > &positions, const std::vector<vector3<float, DIRECTION_TYPE> > &normals, const std::vector<vector2<float> > &texCoords);
-	static Mesh* makeBox(Position position, number width, number height, const Material *material = nullptr);
-	static Mesh* makePlane(Position p1, Position p2, Position normal, const Material *material = nullptr);
-	static Mesh* makePlane(Position translation, vector3<number, SCALE_TYPE> scale, AxisRotation rotation, const Material *material = nullptr);
+	static Mesh* makeBox(Position position, number width, number height, std::shared_ptr<const IMaterial> material = nullptr);
+	static Mesh* makePlane(Position p1, Position p2, Position normal, std::shared_ptr<const IMaterial> material = nullptr);
+	static Mesh* makePlane(Position translation, vector3<number, SCALE_TYPE> scale, AxisRotation rotation, std::shared_ptr<const IMaterial> material = nullptr);
 
 private:
 
     void calculateAABox();
 
-    std::vector<Material> m_materials;
-    std::vector<Chunk>    m_chunks;
+    std::vector<Chunk> m_chunks;
     AABox m_box;
 
 };

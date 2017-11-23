@@ -37,6 +37,10 @@ namespace
                     line.next();
                     stop = !parse_color(line, material.specular);
                     break;
+                case 'e':
+                    line.next();
+                    stop = !parse_color(line, material.emission);
+                    break;
                 }
                 break;
             case 'T':
@@ -50,7 +54,9 @@ namespace
                 if (equal("illum", line.m_it))
                 {
                     line.m_it += 5;
-                    stop = !parse_uint(line, material.illumination);
+                    unsigned int illumination;
+                    stop = !parse_uint(line, illumination);
+                    material.illumination = static_cast<IlluminationModel>(illumination);
                 }
                 else
                 {
@@ -130,11 +136,12 @@ namespace
 
 Material::Material(std::string _name) :
     name(_name),
-    ambient(), // Ka
+    ambient(0), // Ka
     diffuse(0.5f, 0.5f, 0.5f), // Kd
-    specular(), // Ks
-    transmission(), // Tf
-    illumination(0), // illum 
+    specular(0), // Ks
+    emission(0), // Ke
+    transmission(0), // Tf
+    illumination(I0), // illum 
                      // transparent
     dissolve(1), // d
     halo(false), // d -halo

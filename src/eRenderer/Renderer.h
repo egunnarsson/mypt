@@ -90,12 +90,12 @@ public:
 
 	void start();
 	void stop();
+    bool step();
 	// void resume(); // same as start but does not clear buffer/iteration, unless resolution change
 	bool isRunning() const;
 
 	int  lastFrameId() const;
 
-	void printStuff();
 private:
 
 	void loop();

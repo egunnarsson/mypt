@@ -15,14 +15,6 @@
 #include "Mesh.h"
 #include "Loader.h"
 
-#define GLASS_M  Material(GLASS,   Color(0), Color(1,1,1) * 0.999)
-#define	MIRROR_M Material(MIRROR,  Color(0), Color(1,1,1) * 0.999)
-#define RED_M    Material(DIFFUSE, Color(0), Color(0.75, 0.25, 0.25))
-#define BLUE_M   Material(DIFFUSE, Color(0), Color(0.25, 0.25, 0.75))
-#define GRAY_M   Material(DIFFUSE, Color(0), Color(0.75, 0.75, 0.75))
-#define LIGHT_M  Material(DIFFUSE, Color(12.0, 12.0, 12.0), Color(0))
-#define BLACK_M  Material(DIFFUSE, Color(0), Color(0))
-
 namespace
 {
 	const int W = 640;
@@ -32,14 +24,42 @@ namespace
 
 	const SDL_VideoInfo* info = nullptr;
 	GLuint tex = 0;
+
+    std::shared_ptr<const SmallPtMaterial> GLASS_M(new GlassMaterial(Color(0), Color(1, 1, 1) * 0.999));
+    std::shared_ptr<const SmallPtMaterial> MIRROR_M(new MirrorMaterial(Color(0), Color(1, 1, 1) * 0.999));
+    std::shared_ptr<const SmallPtMaterial> RED_M(new DiffuseMaterial(Color(0), Color(0.75, 0.25, 0.25)));
+    std::shared_ptr<const SmallPtMaterial> BLUE_M(new DiffuseMaterial(Color(0), Color(0.25, 0.25, 0.75)));
+    std::shared_ptr<const SmallPtMaterial> GRAY_M(new DiffuseMaterial(Color(0), Color(0.75, 0.75, 0.75)));
+    std::shared_ptr<const SmallPtMaterial> LIGHT_M(new DiffuseMaterial(Color(12.0, 12.0, 12.0), Color(0)));
+    std::shared_ptr<const SmallPtMaterial> BLACK_M(new DiffuseMaterial(Color(0), Color(0)));
 };
 
-Material convertOBJMaterial(eobj::Material &objMaterial)
+IMaterial *convertOBJMaterial(eobj::Material &objMaterial)
 {
-    Reflection reflection = DIFFUSE;
-    Color emission = Color::castT(objMaterial.ambient);
-    Color color = Color::castT(objMaterial.diffuse);
-    return Material(reflection, emission, color);
+    ObjMaterial *material = new ObjMaterial();
+
+    material->emission = Color::castT(objMaterial.ambient);
+    material->diffuse = Color::castT(objMaterial.diffuse);
+    
+    material->ambient = Color::castT(objMaterial.ambient);
+    material->diffuse = Color::castT(objMaterial.diffuse);
+    material->specular = Color::castT(objMaterial.specular);
+    material->emission = Color::castT(objMaterial.emission);
+
+    material->transmission = Color::castT(objMaterial.transmission);
+
+    material->illumination = objMaterial.illumination;
+
+    material->dissolve = objMaterial.dissolve;
+    material->halo = objMaterial.halo;
+
+    material->specularExponent = objMaterial.specularExponent;
+
+    material->sharpness = objMaterial.sharpness;
+
+    material->density = objMaterial.density;
+
+    return material;
 }
 
 bool init_sdl()
@@ -93,43 +113,32 @@ int main(int argc, char *argv[])
 
 	renderer.setCamera(&camera);
 
-	scene.addMesh(Mesh::makePlane(Position(0, 50, 0), Scale(100, 100, 100), AxisRotation(Direction(1, 0, 0), 90), &GRAY_M)); // Backs
-	scene.addMesh(Mesh::makePlane(Position(-100, 50, 0), Scale(100, 100, 100), AxisRotation(Direction(0, 0, 1), 90), &RED_M)); // Left
-	scene.addMesh(Mesh::makePlane(Position(0, 50, 0), Scale(100, 100, 100), AxisRotation(Direction(1, 0, 0), 0), &GRAY_M));// bottom 
-	scene.addMesh(Mesh::makePlane(Position(0, 50, 0), Scale(100, 100, 100), AxisRotation(Direction(0, 0, 1), 90), &BLUE_M)); // Right
-	scene.addMesh(Mesh::makePlane(Position(0, 150, 0), Scale(100, 100, 100), AxisRotation(Direction(1, 0, 0), 0), &GRAY_M)); // Top
-	scene.addMesh(Mesh::makePlane(Position(0, 119, 0), Scale(39, 39, 39), AxisRotation(Direction(0, 0, 1), 0), &LIGHT_M));
+	scene.addMesh(Mesh::makePlane(Position(0, 50, 0), Scale(100, 100, 100), AxisRotation(Direction(1, 0, 0), 90), GRAY_M)); // Backs
+	scene.addMesh(Mesh::makePlane(Position(-100, 50, 0), Scale(100, 100, 100), AxisRotation(Direction(0, 0, 1), 90), RED_M)); // Left
+	scene.addMesh(Mesh::makePlane(Position(0, 50, 0), Scale(100, 100, 100), AxisRotation(Direction(1, 0, 0), 0), GRAY_M));// bottom 
+	scene.addMesh(Mesh::makePlane(Position(0, 50, 0), Scale(100, 100, 100), AxisRotation(Direction(0, 0, 1), 90), BLUE_M)); // Right
+	scene.addMesh(Mesh::makePlane(Position(0, 150, 0), Scale(100, 100, 100), AxisRotation(Direction(1, 0, 0), 0), GRAY_M)); // Top
+	scene.addMesh(Mesh::makePlane(Position(0, 119, 0), Scale(39, 39, 39), AxisRotation(Direction(0, 0, 1), 0), LIGHT_M));
 	
 	{
-		eobj::Loader loader("gourd.obj");
+		eobj::Loader loader("fighter.obj");
 		if (loader.load())
 		{
-            /*
-			if (loader.hasMissingNormal())
-			{
-				printf("calculateMissingNormals\n");
-				loader.calculateMissingNormals();
-			}
+            Mesh *mesh = new Mesh();
 
-			if (loader.hasMissingTexCoord())
-			{
-				loader.fillMissingTexCoords(eObjLoader::vec2(0, 0));
-			}
-            */
             for (std::size_t i = 0; i < loader.chunkCount(); ++i)
             {
-                Mesh *mesh = Mesh::makeMesh(loader.getChunkIndices(i), loader.positions(), loader.normals(), loader.texCoords());
-
-                mat4 scale = mat4::make_scale(12.0);
-                mat4 rotation = mat4::make_rotation(Direction(0, 1, 0), toRadians(25));
-                mat4 translate = mat4::make_translation(Position(20, 50, 0));
-
-                mesh->transform(translate * rotation * scale);
-                mesh->setMaterial(convertOBJMaterial(loader.getMaterial(i)));
-                //mesh->setMaterial(GRAY_M);
-
-                scene.addMesh(mesh);
+                std::shared_ptr<const IMaterial> material(convertOBJMaterial(loader.getMaterial(i)));
+                mesh->addChunk(material, loader.getChunkIndices(i), loader.positions(), loader.normals(), loader.texCoords());
             }
+
+            mat4 scale = mat4::make_scale(5.0);
+            mat4 rotation = mat4::make_rotation(Direction(0, 1, 0), toRadians(25));
+            mat4 translate = mat4::make_translation(Position(20, 50, 0));
+
+            mesh->transform(translate * rotation * scale);
+            //mesh->setMaterial(GRAY_M);
+            scene.addMesh(mesh);
 		}
 	}
 
@@ -137,32 +146,21 @@ int main(int argc, char *argv[])
         eobj::Loader loader("camera.obj");
 		if (loader.load())
 		{
-            /*
-			if (loader.hasMissingNormal())
-			{
-				printf("calculateMissingNormals\n");
-				loader.calculateMissingNormals();
-			}
+            Mesh *mesh = new Mesh();
 
-			if (loader.hasMissingTexCoord())
-			{
-				loader.fillMissingTexCoords(eObjLoader::vec2(0, 0));
-			}
-            */
             for (std::size_t i = 0; i < loader.chunkCount(); ++i)
             {
-                Mesh *mesh = Mesh::makeMesh(loader.getChunkIndices(i), loader.positions(), loader.normals(), loader.texCoords());
-
-                mat4 scale = mat4::make_scale(12.0);
-                mat4 rotation = mat4::make_rotation(Direction(0, 1, 0), toRadians(25));
-                mat4 translate = mat4::make_translation(Position(0, 10, 0));
-
-                mesh->transform(translate * rotation * scale);
-                mesh->setMaterial(convertOBJMaterial(loader.getMaterial(i)));
-                //mesh->setMaterial(GRAY_M);
-
-                scene.addMesh(mesh);
+                std::shared_ptr<const IMaterial> material(convertOBJMaterial(loader.getMaterial(i)));
+                mesh->addChunk(material, loader.getChunkIndices(i), loader.positions(), loader.normals(), loader.texCoords());
             }
+
+            mat4 scale = mat4::make_scale(12.0);
+            mat4 rotation = mat4::make_rotation(Direction(0, 1, 0), toRadians(25));
+            mat4 translate = mat4::make_translation(Position(0, 10, 0));
+
+            mesh->transform(translate * rotation * scale);
+            //mesh->setMaterial(MIRROR_M);
+            scene.addMesh(mesh);
 		}
 	}
 	
@@ -178,8 +176,11 @@ int main(int argc, char *argv[])
 	renderer.start();
 
 	bool run = true;
-	while (run) {
+    bool debugPixel = false;
+    int x = 0, y = 0;
 
+	while (run)
+    {
 		FramePtr frame = renderer.getNextFrame();
 
 		if (frame != nullptr)
@@ -207,6 +208,11 @@ int main(int argc, char *argv[])
 			frameStart = frameEnd;
 
 			//printf("%f\n", frameTime);
+            if (debugPixel)
+            {
+                printf("[%d %d] : %f %f %f\n", x, y, frame->buffer()[x+y*W].x, frame->buffer()[x + y*W].y, frame->buffer()[x + y*W].z);
+                debugPixel = false;
+            }
 
 			SDL_WM_SetCaption(oss.str().c_str(), 0);
 		}
@@ -223,6 +229,11 @@ int main(int argc, char *argv[])
 					//SDL_SaveBMP(screen, tmp);
 				}
 				break;
+            case SDL_MOUSEBUTTONUP:
+                debugPixel = true;
+                x = event.button.x;
+                y = event.button.y;
+                break;
 			default: break;
 			}
 		}

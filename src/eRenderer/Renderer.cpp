@@ -40,40 +40,36 @@ namespace
 			Color total(0);
 			Color contribution(1, 1, 1);
 
-			/*Material mat;
-			Direction normal(0);
-			number t;*/
-
 			AABVH::HitInfo hit;
 			
-			//for (int depth = 1; depth < 50; depth++) {
-			while (true) {
-
+			while (true)
+            {
 				ray.calculateInvDir();
 
-				//if (!m_data.m_scene->intersect(ray, t, mat, normal)) {
-				if (!m_data.m_scene->intersect(ray, hit)) {
+				if (!m_data.m_scene->intersect(ray, hit))
+                {
 					return total;
 				}
 
-				const Material &mat = hit.mesh->materials()[hit.chunkIndex];
+                const std::shared_ptr<const IMaterial> &mat = hit.mesh->chunks()[hit.chunkIndex].m_material;
 				const Direction &normal = hit.mesh->chunks()[hit.chunkIndex].m_normals[hit.triangleIndex * 3];
 
-				Color color = mat.m_color;
+                IMaterial::SampleResult sample = mat->sample(ray, hit.t, normal, rand);
+
+				Color color = sample.reflectance;
 				const number p = tmax(tmax(color.x, color.y), color.z);
 
-				//if (depth > 5) {
 				if (rand() < p)
 					color *= (1 / p);
 				else
-					return total + (contribution * mat.m_emission);
-				//}
+					return total + (contribution * sample.emission);
 
-				number importance;
-				ray = mat.sample(ray, hit.t, normal, importance, rand).nudge();
+				//number importance;
+				//ray = mat->sample(ray, hit.t, normal, sample.importance, rand).nudge();
+                ray = sample.out;
 
-				total = total + (contribution * mat.m_emission);
-				contribution = contribution * color * importance;
+				total = total + (contribution * sample.emission);
+                contribution = contribution * color;// *sample.importance;
 			}
 			return total;
 		}
@@ -255,6 +251,38 @@ void Renderer::stop()
 		m_thread = nullptr;
 		m_running = false;
 	}
+}
+
+// very hacky atm
+bool Renderer::step()
+{
+    if (!m_running)
+    {
+        if (m_camera == nullptr)
+        {
+            LOG_ERROR("trying to start with no camera");
+            return false;
+        }
+        if (m_scene == nullptr)
+        {
+            LOG_ERROR("trying to start with no scene");
+            return false;
+        }
+
+        m_scene->calculateAccelerationStructure();
+
+        m_stop = false;
+        m_thread = new std::thread(&Renderer::loop, this);
+        m_running = true;
+
+        stop();
+
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 bool Renderer::isRunning() const
